@@ -1,0 +1,271 @@
+import { useState, useEffect, useRef, useId } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, Search, Check, Ban, UserX, RotateCcw, ArrowRight, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { pacientesService, citasService } from '../services/api';
+import { generarSlotsHorario, formatearHora12h, ESTADO_CITA_CONFIG } from '../utils/agendaUtils';
+
+const DURACIONES = [
+  { valor: 30, label: '30 min' },
+  { valor: 60, label: '1 hora' },
+  { valor: 90, label: '1h 30' },
+  { valor: 120, label: '2 horas' },
+];
+
+const SLOTS = generarSlotsHorario();
+
+const CitaModal = ({ isOpen, onClose, onGuardado, doctores, citaExistente, prefill }) => {
+  const navigate = useNavigate();
+  const fieldId = useId();
+  const esEdicion = !!citaExistente;
+  const submitLabel = esEdicion ? 'Guardar Cambios' : 'Agendar Cita';
+
+  const [form, setForm] = useState({
+    paciente_id: null,
+    nombre_contacto: '', celular_contacto: '', motivo_consulta: '',
+    doctor_id: '', fecha: '', hora_inicio: '', duracion_minutos: 30,
+  });
+  const [pacienteVinculado, setPacienteVinculado] = useState(null);
+  const [busquedaPaciente, setBusquedaPaciente] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+  const [guardando, setGuardando] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [error, setError] = useState('');
+  const mutationBusy = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (citaExistente) {
+      setForm({
+        paciente_id: citaExistente.paciente_id || null,
+        nombre_contacto: citaExistente.nombre_contacto || '',
+        celular_contacto: citaExistente.celular_contacto || '',
+        motivo_consulta: citaExistente.motivo_consulta || '',
+        doctor_id: citaExistente.doctor_id || '',
+        fecha: citaExistente.fecha || '',
+        hora_inicio: String(citaExistente.hora_inicio || '').substring(0, 5),
+        duracion_minutos: citaExistente.duracion_minutos || 30,
+      });
+      setPacienteVinculado(
+        citaExistente.paciente_id
+          ? { nombre: `${citaExistente.paciente_apellidos || ''}, ${citaExistente.paciente_nombres || ''}` }
+          : null
+      );
+    } else {
+      setForm({
+        paciente_id: null, nombre_contacto: '', celular_contacto: '', motivo_consulta: '',
+        doctor_id: prefill?.doctor_id || '', fecha: prefill?.fecha || '',
+        hora_inicio: prefill?.hora_inicio || '', duracion_minutos: 30,
+      });
+      setPacienteVinculado(null);
+    }
+    setBusquedaPaciente('');
+    setResultadosBusqueda([]);
+    setError('');
+  }, [isOpen, citaExistente, prefill]);
+
+  useEffect(() => {
+    if (!isOpen || busquedaPaciente.trim().length < 2) { setResultadosBusqueda([]); return; }
+    const controller = new AbortController();
+    const delay = setTimeout(async () => {
+      try {
+        const { data } = await pacientesService.getAll(busquedaPaciente.trim(), 'false', 6, controller.signal);
+        if (!controller.signal.aborted) setResultadosBusqueda((data.data || []).slice(0, 6));
+      } catch {
+        if (!controller.signal.aborted) setResultadosBusqueda([]);
+      }
+    }, 300);
+    return () => { clearTimeout(delay); controller.abort(); };
+  }, [busquedaPaciente, isOpen]);
+
+  const seleccionarPaciente = (p) => {
+    setForm(prev => ({ ...prev, paciente_id: p.id, nombre_contacto: `${p.apellidos}, ${p.nombres}`, celular_contacto: p.celular || '' }));
+    setPacienteVinculado({ nombre: `${p.apellidos}, ${p.nombres}` });
+    setBusquedaPaciente('');
+    setResultadosBusqueda([]);
+  };
+
+  const desvincularPaciente = () => {
+    setForm(prev => ({ ...prev, paciente_id: null }));
+    setPacienteVinculado(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (mutationBusy.current) return;
+    if (!form.nombre_contacto || !form.celular_contacto || !form.doctor_id || !form.fecha || !form.hora_inicio) {
+      toast.error('Completa todos los campos obligatorios.'); return;
+    }
+    mutationBusy.current = true;
+    try {
+      setError('');
+      setGuardando(true);
+      if (esEdicion) {
+        await citasService.editar(citaExistente.id, form);
+        toast.success('Cita actualizada correctamente.');
+      } else {
+        await citasService.crear(form);
+        toast.success('Cita agendada correctamente.');
+      }
+      await onGuardado();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.mensaje || 'Error al guardar la cita.');
+    } finally {
+      mutationBusy.current = false;
+      setGuardando(false);
+    }
+  };
+
+  const cambiarEstado = async (nuevoEstado) => {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
+    try {
+      setError('');
+      setCambiandoEstado(true);
+      await citasService.actualizarEstado(citaExistente.id, nuevoEstado);
+      toast.success('Estado actualizado.');
+      await onGuardado();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.mensaje || 'Error al actualizar el estado.');
+    } finally {
+      mutationBusy.current = false;
+      setCambiandoEstado(false);
+    }
+  };
+
+  if (!isOpen) return null;
+  const estadoCfg = esEdicion ? ESTADO_CITA_CONFIG[citaExistente.estado] : null;
+
+  return (
+    <div className="dialog-overlay fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <h3 className="text-lg font-semibold text-slate-800">{esEdicion ? 'Detalle de la cita' : 'Nueva cita'}</h3>
+          <button onClick={onClose} disabled={guardando || cambiandoEstado} className="ui-icon-button" aria-label="Cerrar cita"><X size={18}/></button>
+        </div>
+
+        {esEdicion && (
+          <div className={`px-5 py-3 flex items-center justify-between flex-shrink-0 flex-wrap gap-2 ${estadoCfg.bg}`}>
+            <span className={`text-xs font-black uppercase tracking-widest ${estadoCfg.text}`}>{estadoCfg.label}</span>
+            {citaExistente.estado === 'agendada' ? (
+              <div className="flex gap-1.5">
+                <button type="button" disabled={guardando || cambiandoEstado} onClick={() => cambiarEstado('atendida')} className="text-[11px] font-bold bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 flex items-center gap-1"><Check size={12}/> Atendida</button>
+                <button type="button" disabled={guardando || cambiandoEstado} onClick={() => cambiarEstado('no_asistio')} className="text-[11px] font-bold bg-red-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-600 flex items-center gap-1"><UserX size={12}/> No Asistió</button>
+                <button type="button" disabled={guardando || cambiandoEstado} onClick={() => cambiarEstado('cancelada')} className="text-[11px] font-bold bg-slate-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-600 flex items-center gap-1"><Ban size={12}/> Cancelar</button>
+              </div>
+            ) : (
+              <button type="button" disabled={guardando || cambiandoEstado} onClick={() => cambiarEstado('agendada')} className="text-[11px] font-bold bg-white/80 text-slate-700 px-2.5 py-1.5 rounded-lg hover:bg-white flex items-center gap-1"><RotateCcw size={12}/> Revertir a Agendada</button>
+            )}
+          </div>
+        )}
+
+        {esEdicion && citaExistente.estado === 'atendida' && citaExistente.paciente_id && (
+          <div className="px-5 py-3 bg-green-50 border-b border-green-100 flex-shrink-0">
+            <button type="button" onClick={() => navigate(`/pacientes/${citaExistente.paciente_id}?tab=evolucion`)} className="w-full text-sm font-bold text-green-700 hover:text-green-800 flex items-center justify-center gap-2">
+              Ir a su Historia Clínica (Evolución) <ArrowRight size={14}/>
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-5">
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
+          <div>
+            {pacienteVinculado ? <p className="ui-field-label">Paciente (opcional, buscar existente)</p> : <label htmlFor={`${fieldId}-paciente`} className="ui-field-label">Paciente (opcional, buscar existente)</label>}
+            {pacienteVinculado ? (
+              <div className="flex items-center justify-between bg-clinical-50 border border-clinical-100 px-4 py-2.5 rounded-xl">
+                <span className="text-sm font-bold text-clinical-700">{pacienteVinculado.nombre}</span>
+                <button type="button" onClick={desvincularPaciente} className="text-xs text-slate-400 hover:text-red-500 font-bold">Quitar</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                <input id={`${fieldId}-paciente`} type="text" value={busquedaPaciente} onChange={e => { setBusquedaPaciente(e.target.value); setResultadosBusqueda([]); }}
+                  placeholder="Buscar por nombre o DNI..."
+                  className="ui-input pl-9" />
+                {resultadosBusqueda.length > 0 && (
+                  <div className="absolute top-full mt-1 left-0 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
+                    {resultadosBusqueda.map(p => (
+                      <button key={p.id} type="button" onClick={() => seleccionarPaciente(p)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 border-b border-slate-50 last:border-0">
+                        <span className="font-bold text-slate-700">{p.apellidos}, {p.nombres}</span>
+                        <span className="text-xs text-slate-400 ml-2">DNI {p.dni}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`${fieldId}-nombre`} className="ui-field-label">Nombre de contacto</label>
+              <input id={`${fieldId}-nombre`} required value={form.nombre_contacto} onChange={e => setForm(prev => ({ ...prev, nombre_contacto: e.target.value }))}
+                className="ui-input" />
+            </div>
+            <div>
+              <label htmlFor={`${fieldId}-celular`} className="ui-field-label">Celular</label>
+              <input id={`${fieldId}-celular`} required value={form.celular_contacto} onChange={e => setForm(prev => ({ ...prev, celular_contacto: e.target.value.replace(/\D/g, '') }))} maxLength={9}
+                className="ui-input" />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor={`${fieldId}-motivo`} className="ui-field-label">Motivo de consulta</label>
+            <textarea id={`${fieldId}-motivo`} rows={2} value={form.motivo_consulta} onChange={e => setForm(prev => ({ ...prev, motivo_consulta: e.target.value }))}
+              className="ui-input resize-y" />
+          </div>
+
+          <div>
+            <label htmlFor={`${fieldId}-doctor`} className="ui-field-label">Doctor</label>
+            <select id={`${fieldId}-doctor`} required value={form.doctor_id} onChange={e => setForm(prev => ({ ...prev, doctor_id: e.target.value }))}
+              className="ui-input">
+              <option value="">Selecciona un doctor...</option>
+              {doctores.map(d => <option key={d.id} value={d.id}>{d.nombre_completo}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`${fieldId}-fecha`} className="ui-field-label">Fecha</label>
+              <input id={`${fieldId}-fecha`} required type="date" value={form.fecha} onChange={e => setForm(prev => ({ ...prev, fecha: e.target.value }))}
+                className="ui-input" />
+            </div>
+            <div>
+              <label htmlFor={`${fieldId}-hora`} className="ui-field-label">Hora de inicio</label>
+              <select id={`${fieldId}-hora`} required value={form.hora_inicio} onChange={e => setForm(prev => ({ ...prev, hora_inicio: e.target.value }))}
+                className="ui-input">
+                <option value="">Elige...</option>
+                {SLOTS.map(s => <option key={s} value={s}>{formatearHora12h(s)}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <fieldset className="min-w-0">
+            <legend className="ui-field-label w-full">Duración</legend>
+            <div className="flex gap-2">
+              {DURACIONES.map(d => (
+                <button key={d.valor} type="button" aria-pressed={form.duracion_minutos === d.valor} onClick={() => setForm(prev => ({ ...prev, duracion_minutos: d.valor }))}
+                  className={`flex-1 py-2.5 rounded-xl border text-sm font-bold transition-colors ${form.duracion_minutos === d.valor ? 'bg-clinical-50 border-clinical-300 text-clinical-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <button type="submit" disabled={guardando || cambiandoEstado} className="ui-button-primary w-full">
+            {guardando ? 'Guardando...' : submitLabel}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CitaModal;

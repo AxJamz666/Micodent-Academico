@@ -1,0 +1,56 @@
+{
+  "name": "micodent-backend",
+  "version": "1.0.0",
+  "description": "API REST - Clínica Micodent",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test tests/unit/*.test.cjs tests/unit/*.test.js",
+    "test:coverage": "node scripts/test-coverage.cjs",
+    "test:postgres": "node --test --test-concurrency=1 tests/postgres/u3b-sql.test.cjs tests/postgres/u3b-runtime.test.cjs",
+    "db:prepare:lab": "node scripts/postgres-u3b-prepare.cjs"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "cookie": "0.7.2",
+    "cors": "2.8.6",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "jsonwebtoken": "9.0.3",
+    "multer": "2.5.0",
+    "mysql2": "3.24.5",
+    "pg": "8.23.1",
+    "rate-limiter-flexible": "11.2.0"
+  },
+  "devDependencies": {
+    "c8": "12.0.0",
+    "nodemon": "3.1.14"
+  },
+  "c8": {
+    "all": true,
+    "src": [
+      "src"
+    ],
+    "include": [
+      "src/**/*.js"
+    ],
+    "exclude": [],
+    "extension": [
+      ".js"
+    ],
+    "reporter": [
+      "text-summary",
+      "lcovonly",
+      "json-summary"
+    ],
+    "reporterOptions": {
+      "lcovonly": {
+        "projectRoot": ".."
+      }
+    },
+    "reports-dir": "coverage",
+    "check-coverage": false
+  },
+  "private": true
+}
