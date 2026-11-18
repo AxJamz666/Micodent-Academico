@@ -33,4 +33,3 @@ test('APO-02 renders server inventory and keeps the operation key after a lost r
     else delete globalThis.FormData;
   }
 });
-
