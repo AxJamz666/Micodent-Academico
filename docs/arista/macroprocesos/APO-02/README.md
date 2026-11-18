@@ -41,3 +41,7 @@ Prueba de componente jose-insumos.test.mjs aprobada: representa el inventario de
 npm test del backend aprobó 115 pruebas.
 La suite completa del frontend registró 151 casos, 144 aprobados y 7 fallidos. Se investiga su reproducción en el baseline; no se declara una regresión global aprobada.
 La instalación del frontend reportó 18 vulnerabilidades (6 moderadas y 12 altas), además de las 9 del backend. El build aprobó con aviso de chunk superior a 500 kB.
+## Comparación final
+En un snapshot intacto de origin/main se ejecutaron los cinco archivos involucrados en los fallos: 39 casos, 34 aprobados y 5 fallidos por fingerprints históricos. La incorporación de la ruta /insumos requiere una excepción explícita en la comprobación histórica de App.jsx; se verifica su guarda AdminRoute y se comparan las rutas anteriores conservando el hash previo. Esa comprobación específica pasó.
+La prueba aislada de impresión de Rx volvió a fallar en el candidato (1/2). Los archivos clínicos y la prueba tienen los mismos bytes que origin/main; la causa del fallo permanece pendiente de análisis con Alex.
+La suite global no se declara aprobada. No se sustituyeron los cinco hashes históricos por hashes nuevos.
