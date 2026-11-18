@@ -21,4 +21,3 @@ Auditoría del 17 de noviembre de 2026. Base b3239ed28f09c59f31ab00a0f210ed1a46b
 Ver PRUEBAS.md para los casos del catálogo y ../../RESULTADOS_JOSE.md para las ejecuciones y límites.
 El código importado mantiene la autoría de sus commits originales. Esta revisión y las nuevas pruebas se atribuyen a José.
 Los identificadores AP-MP del material privado se registran en la trazabilidad CSV.
-
