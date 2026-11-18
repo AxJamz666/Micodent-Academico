@@ -43,3 +43,9 @@ Se repitieron los cinco archivos afectados sobre un snapshot de origin/main b323
 Resultado del subconjunto en baseline: 39 casos, 34 aprobados y 5 fallidos. Los cinco fallos reproducidos corresponden a hashes AST históricos de Historias y otros componentes.
 El fallo adicional de hash sobre App.jsx en la rama de insumos corresponde a la nueva ruta y requiere ajustar el contrato para conservar la comprobación de las rutas previas.
 El fallo transitorio de impresión de Rx no se reprodujo en el snapshot. Requiere repetición aislada en la rama candidata.
+## Cierre de la comparación
+PR #3 documenta los siete macroprocesos junto con los aportes técnicos de PR #1 y PR #2.
+El commit 8cea44faa3baa5c1076c9476016a9d5e9f204b41 ajusta la comprobación de App.jsx para admitir únicamente la ruta de inventario protegida y conservar el hash de las rutas anteriores. El caso específico pasó.
+La repetición aislada de impresión Rx registró 1 aprobada y 1 fallida. El código y la prueba de ese componente permanecen iguales a la base. Su causa queda pendiente con Alex.
+La ficha detallada de APO-02 se mantiene en PR #2 para evitar que el PR documental la sobrescriba.
+El procedimiento de recuperación se encuentra en macroprocesos/APO-03/RESTAURACION_LAB.md; ejecución completa pendiente por ausencia de clientes pg_dump/pg_restore en el laboratorio actual.
