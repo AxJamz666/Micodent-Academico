@@ -1207,6 +1207,7 @@ const statements = [
 ];
 
 statements.push(...require('./postgresPending').statements);
+statements.push(...require('./insumosStatements'));
 const bySql = new Map(statements.map(statement => [statement.mysql, statement]));
 function resolveQuery(sql, values = []) {
   const statement = bySql.get(sql);

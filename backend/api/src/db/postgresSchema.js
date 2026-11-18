@@ -10,7 +10,13 @@ const CHECKSUM = crypto.createHash('sha256').update('MICODENT_POSTGRES_U3B2_SCHE
 async function verifySchema(pool) {
   const pending = () => Object.assign(new Error('SCHEMA_PENDING'), { code: 'SCHEMA_PENDING' });
   const { rows } = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'");
-  if (rows.length !== TABLES.length || TABLES.some(name => !rows.some(row => row.table_name === name))) throw pending();
+  const inventory = rows.some(row => row.table_name === 'insumos');
+  const required = inventory ? [...TABLES, 'insumos', 'insumos_operaciones'] : TABLES;
+  if (rows.length !== required.length || required.some(name => !rows.some(row => row.table_name === name))) throw pending();
+  if (inventory) {
+    await pool.query('SELECT id,nombre,unidad,stock,minimo,creado_por FROM insumos LIMIT 0');
+    await pool.query('SELECT id,insumo_id,usuario_id,clave,huella,tipo,cantidad,motivo,creado_en FROM insumos_operaciones LIMIT 0');
+  }
   const marker = await pool.query('SELECT checksum FROM micodent_migrations WHERE id=$1', ['postgres_u3b_001']);
   if (marker.rows.length !== 1 || marker.rows[0].checksum !== CHECKSUM) throw pending();
   const probes = [

@@ -33,3 +33,5 @@ cypress/videos/
 *.sql
 !database/init.sql
 !database/seeds.sql
+
+!database/postgresql/migrations/001_insumos.sql

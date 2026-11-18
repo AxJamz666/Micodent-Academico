@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Insumos from './pages/Insumos';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -37,6 +38,7 @@ function App() {
           <Route path="pacientes" element={<Pacientes />} />
           <Route path="pacientes/nuevo" element={<PacienteDetalle />} />
           <Route path="pacientes/:id" element={<PacienteDetalle />} />
+          <Route path="insumos" element={<AdminRoute><Insumos /></AdminRoute>} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="produccion" element={<Produccion />} />
           <Route path="finanzas" element={
