@@ -139,7 +139,14 @@ test('4A reviewed unreachable legacy handlers and their references are absent', 
 
 test('4A removal leaves current clinical controls, routes and profile unchanged', () => {
   for (const [path, fingerprint] of Object.entries(protectedFiles)) {
-    const text = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+    let text = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+    if (path === 'src/App.jsx') {
+      // Compare pre-existing routes while allowing the reviewed inventory addition.
+      assert.ok(text.includes('path="insumos" element={<AdminRoute><Insumos /></AdminRoute>}'));
+      text = text.split('\n').filter(line =>
+        !line.startsWith("import Insumos from ") && !line.includes('<Route path="insumos"')
+      ).join('\n');
+    }
     assert.equal(createHash('sha256').update(text).digest('hex'), fingerprint, path);
   }
 });

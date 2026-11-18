@@ -71,6 +71,7 @@ const MainLayout = () => {
               </div>
 
               <div className="px-2 space-y-1">
+                {isAdmin && <Link to="/insumos" onClick={() => setIsProfileOpen(false)} className="block px-4 py-2.5 text-sm font-bold">Insumos clínicos</Link>}
                 {!isAdmin && role === 'Doctor' && <Link to="/produccion" onClick={() => setIsProfileOpen(false)} className="w-full px-4 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 rounded-xl flex items-center gap-3 font-bold"><TrendingUp size={18}/>Mi producción</Link>}
                 <Link to="/perfil" onClick={() => setIsProfileOpen(false)} className="w-full px-4 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 rounded-xl flex items-center gap-3 font-bold transition-colors">
                   <User size={18} className="text-slate-400" /> Mi Perfil

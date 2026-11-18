@@ -38,7 +38,10 @@ test('U3B real connection is the identified synthetic database and least-privile
 
 test('U3B clean schema has all 35 tables and no sample clinical images', async () => {
   const tables = await native.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'");
-  assert.equal(tables.rows.length, 35);
+  const names = tables.rows.map(row => row.table_name);
+  const { TABLES } = require('../../src/db/postgresSchema');
+  const expected = names.includes('insumos') ? [...TABLES, 'insumos', 'insumos_operaciones'] : TABLES;
+  assert.deepEqual(names.sort(), [...expected].sort());
   assert.equal(Number((await native.query('SELECT COUNT(*) AS count FROM radiografias')).rows[0].count), 0);
 });
 
